@@ -101,7 +101,7 @@ fun sortAndFilterList(itemsList: List<Item>): List<Item>{
     val filteredList: List<Item> = itemsList.filter {!it.name.isNullOrBlank()}
     val sortedList: List<Item> = filteredList
         // This code sorts by value in name: Item {value}
-        // If sorting by name desired remove ?.substring(5)?.toIntOrNull()
+        // If sorting by name is desired, remove ?.substring(5)?.toIntOrNull()
         .sortedWith(compareBy<Item> {it.listId}.thenBy{it.name?.substring(5)?.toIntOrNull()})
     return sortedList
 }
@@ -113,11 +113,14 @@ fun sortAndFilterList(itemsList: List<Item>): List<Item>{
 @Composable
 fun ItemsList(pad:PaddingValues){
     val viewModel: MyViewModel = viewModel()
+    // myItems stores the items retrieved from API call
     val myItems = viewModel.items.collectAsState().value
     LaunchedEffect(Unit) {
         viewModel.getItems()
     }
+    // Sorts items by listId and value in name
     val sortedList: List<Item> = sortAndFilterList(myItems)
+    // Displays the list
     LazyColumn (
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
