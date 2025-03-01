@@ -50,7 +50,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
+/**
+ * ViewModel responsible for managing and fetching the list of items from the API.
+ * Variable items is used as state to hold fetched information
+ */
 class MyViewModel : ViewModel() {
     private val _items = MutableStateFlow<List<Item>>(emptyList())
     val items: StateFlow<List<Item>> = _items
@@ -67,12 +70,19 @@ class MyViewModel : ViewModel() {
         }
     }
 }
-
+/**
+ * Retrofit interface defining API endpoints for fetching data.
+ */
 interface ApiService {
     @GET("hiring.json")
     suspend fun fetchItems(): List<Item>
 }
 
+
+/**
+ * Singleton object responsible for creating and managing the Retrofit instance.
+ * This ensures that only one instance of Retrofit is created and used throughout the app.
+ */
 object RetrofitClient{
     private const val FETCH_URL = "https://fetch-hiring.s3.amazonaws.com/"
     val api: ApiService by lazy{
@@ -84,13 +94,22 @@ object RetrofitClient{
     }
 }
 
-//Sorts list based on listId and name
+/**
+ * Sorts list based on listId and name
+ */
 fun sortAndFilterList(itemsList: List<Item>): List<Item>{
     val filteredList: List<Item> = itemsList.filter {!it.name.isNullOrBlank()}
-    val sortedList: List<Item> = filteredList.sortedWith(compareBy<Item> {it.listId}.thenBy{it.name})
+    val sortedList: List<Item> = filteredList
+        // This code sorts by value in name: Item {value}
+        // If sorting by name desired remove ?.substring(5)?.toIntOrNull()
+        .sortedWith(compareBy<Item> {it.listId}.thenBy{it.name?.substring(5)?.toIntOrNull()})
     return sortedList
 }
 
+/**
+ * Displays the list fetched from https://fetch-hiring.s3.amazonaws.com/hiring.json
+ * in filtered (blank/null names) and sorted order.
+ */
 @Composable
 fun ItemsList(pad:PaddingValues){
     val viewModel: MyViewModel = viewModel()
@@ -127,6 +146,9 @@ fun ItemsList(pad:PaddingValues){
     }
 }
 
+/**
+ * Data type for the object from API fetch.
+ */
 data class Item(
     @SerializedName("listId") val listId: Int,
     @SerializedName("name") val name: String?,
