@@ -1,5 +1,5 @@
 package com.example.fetchapp
-
+import com.google.gson.annotations.SerializedName
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,9 +18,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
-
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,7 +41,6 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Column {
                         ItemsList(
-                            myItems = testItems,
                             pad = innerPadding
                         )
                     }
@@ -42,6 +51,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+class MyViewModel : ViewModel() {
+    private val _items = MutableStateFlow<List<Item>>(emptyList())
+    val items: StateFlow<List<Item>> = _items
+    fun getItems(){
+        viewModelScope.launch {
+            try{
+                val retrievedItems = RetrofitClient.api.fetchItems()
+                _items.value = retrievedItems
+                println("Get Items succeeded")
+            }
+            catch (e: Exception){
+                println("Fetch error: ${e.message}")
+            }
+        }
+    }
+}
+
+interface ApiService {
+    @GET("hiring.json")
+    suspend fun fetchItems(): List<Item>
+}
+
+object RetrofitClient{
+    private const val FETCH_URL = "https://fetch-hiring.s3.amazonaws.com/"
+    val api: ApiService by lazy{
+        Retrofit.Builder()
+            .baseUrl(FETCH_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ApiService::class.java)
+    }
+}
+
 //Sorts list based on listId and name
 fun sortAndFilterList(itemsList: List<Item>): List<Item>{
     val filteredList: List<Item> = itemsList.filter {!it.name.isNullOrBlank()}
@@ -49,22 +91,14 @@ fun sortAndFilterList(itemsList: List<Item>): List<Item>{
     return sortedList
 }
 
-
-val testItems = listOf(
-    Item(2, "Asteroid"),
-    Item(1, "Banana"),
-    Item(1, ""),
-    Item(3, "Peach"),
-    Item(1, "Apple"),
-    Item(2, "Pear"),
-    Item(3, "Mango")
-)
-
 @Composable
-fun ItemsList(myItems: List<Item>, pad:PaddingValues){
+fun ItemsList(pad:PaddingValues){
+    val viewModel: MyViewModel = viewModel()
+    val myItems = viewModel.items.collectAsState().value
+    LaunchedEffect(Unit) {
+        viewModel.getItems()
+    }
     val sortedList: List<Item> = sortAndFilterList(myItems)
-//    var currList = mutableListOf<Item>()
-    var currListId: Int? = null
     LazyColumn (
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -72,34 +106,37 @@ fun ItemsList(myItems: List<Item>, pad:PaddingValues){
             .fillMaxSize()
             .padding(pad)
     ){
-        items(sortedList.size){
-            i ->
-            if(currListId != sortedList[i].listId){
-                currListId = sortedList[i].listId
+        sortedList.groupBy { it.listId }.forEach{
+            (listId, items) ->
+            item{
                 Row (modifier =  Modifier.fillMaxWidth()){
                     Text(
-                        text = "List Id: $currListId",
-                        modifier = Modifier.padding(start = 12.dp, top = 12.dp).weight(1f)
+                        text = "List Id: $listId",
+                        modifier = Modifier
+                            .padding(start = 12.dp, top = 12.dp)
+                            .weight(1f)
                     )
                 }
             }
-            Text(
-                text = "${sortedList[i].name}"
-            )
-
+            items(items.size) {
+                i ->  Text(
+                    text = "${items[i].name}"
+                )
+            }
         }
     }
 }
 
 data class Item(
-    val listId: Int,
-    val name: String?
+    @SerializedName("listId") val listId: Int,
+    @SerializedName("name") val name: String?,
+    @SerializedName("id") val id: Int
 )
 
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
     FetchAppTheme {
-        ItemsList(testItems, PaddingValues(16.dp))
+        ItemsList(PaddingValues(16.dp))
     }
 }
