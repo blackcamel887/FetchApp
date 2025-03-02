@@ -22,6 +22,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
@@ -134,6 +137,10 @@ fun ItemsList(pad:PaddingValues){
                 Row (modifier =  Modifier.fillMaxWidth()){
                     Text(
                         text = "List Id: $listId",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
                         modifier = Modifier
                             .padding(start = 12.dp, top = 12.dp)
                             .weight(1f)
